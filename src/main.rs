@@ -5,9 +5,9 @@ use web_sys::{window, CanvasRenderingContext2d, Element, HtmlCanvasElement};
 
 fn draw_point(ctx: &CanvasRenderingContext2d, x: f64, y: f64, erase: bool, point_size: f64) {
     if erase {
-        ctx.set_fill_style_str("white");
-    } else {
         ctx.set_fill_style_str("black");
+    } else {
+        ctx.set_fill_style_str("white");
     }
     // Center the point
     ctx.fill_rect(x - point_size / 2.0, y - point_size / 2.0, point_size, point_size);
@@ -17,6 +17,7 @@ fn draw_point(ctx: &CanvasRenderingContext2d, x: f64, y: f64, erase: bool, point
 fn PointSizeSlider(point_size: ReadSignal<f64>, set_point_size: WriteSignal<f64>) -> impl IntoView {
     view! {
         <input type="range" min="1" max="100" value=point_size on:input=move |evt| set_point_size.set(event_target_value(&evt).parse().unwrap()) />
+        {point_size}
     }
 }
 
@@ -94,19 +95,23 @@ fn App() -> impl IntoView {
 
     view! {
         <div>
+            <canvas
+                node_ref=canvas_ref
+                width=512
+                height=512
+                style="border:1px solid black; background:black;"
+            />
+            <br />
             <button on:click=move |_| set_erase.set(false)>
                 "Draw"
             </button>
             <button on:click=move |_| set_erase.set(true)>
                 "Erase"
             </button>
-            <canvas
-                node_ref=canvas_ref
-                width=500
-                height=500
-                style="border:1px solid black; background:white;"
-            />
+            <br />
+            <p>Point size:</p>
             <PointSizeSlider point_size=point_size set_point_size=set_point_size />
+            <p>Mode: {move || if is_erase.get() { "Erase" } else { "Draw" }}</p>
         </div>
     }
 }
