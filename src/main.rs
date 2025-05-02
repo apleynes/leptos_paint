@@ -1,7 +1,10 @@
+use std::fs::File;
+
 use gloo_events::EventListener;
 use leptos::{prelude::*, html::Canvas};
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{window, CanvasRenderingContext2d, Element, HtmlCanvasElement};
+use web_sys::{window, Blob, CanvasRenderingContext2d, Element, HtmlCanvasElement, MouseEvent, Url};
+use image::{ImageReader};
 
 fn draw_point(ctx: &CanvasRenderingContext2d, x: f64, y: f64, erase: bool, point_size: f64) {
     if erase {
@@ -52,14 +55,14 @@ fn App() -> impl IntoView {
         EventListener::new(&canvas, "pointerdown", move |evt| {
             drawing_flag.set(true);
             let pe = evt.dyn_ref::<web_sys::PointerEvent>().unwrap();
-            let canvas = canvas_ref.get().unwrap();
+            let canvas = canvas_ref.get_untracked().unwrap();
             let rect = canvas.get_bounding_client_rect();
             // adjust for canvas position
             let x = pe.client_x() as f64 - rect.left();
             let y = pe.client_y() as f64 - rect.top();
             // let x = pe.client_x() as f64;
             // let y = pe.client_y() as f64;
-            draw_point(&ctx, x, y, erase_flag.get(), point_size.get());
+            draw_point(&ctx, x, y, erase_flag.get_untracked(), point_size.get_untracked());
         })
         .forget();
 
@@ -82,13 +85,13 @@ fn App() -> impl IntoView {
                 return;
             }
             let pe = evt.dyn_ref::<web_sys::PointerEvent>().unwrap();
-            let canvas = canvas_ref.get().unwrap();
+            let canvas = canvas_ref.get_untracked().unwrap();
             let rect = canvas.get_bounding_client_rect();
             let x = pe.client_x() as f64 - rect.left();
             let y = pe.client_y() as f64 - rect.top();
             // let x = pe.client_x() as f64;
             // let y = pe.client_y() as f64;
-            draw_point(&ctx, x, y, erase_flag.get(), point_size.get());
+            draw_point(&ctx, x, y, erase_flag.get_untracked(), point_size.get_untracked());
         })
         .forget();
     });
@@ -112,6 +115,43 @@ fn App() -> impl IntoView {
             <p>Point size:</p>
             <PointSizeSlider point_size=point_size set_point_size=set_point_size />
             <p>Mode: {move || if is_erase.get() { "Erase" } else { "Draw" }}</p>
+            <br />
+            <button on:click=move |_| {
+                let canvas = canvas_ref.get().unwrap();
+                let ctx = canvas.get_context("2d").unwrap().unwrap().dyn_into::<CanvasRenderingContext2d>().unwrap();
+                ctx.clear_rect(0.0, 0.0, 512.0, 512.0);
+            }>
+                "Clear"
+            </button>
+            <br />
+            <button on:click=move |_| {
+                let canvas = canvas_ref
+                    .get()
+                    .expect("canvas should be in the DOM");
+                let image_string = canvas.to_data_url_with_type("image/png").expect("Failed to convert canvas to image");
+                // let image = image::load_from_memory(&image_string.as_bytes()).expect("Failed to load image");
+                // let image_array = image.as_luma8().unwrap();
+
+                let window = web_sys::window().unwrap();
+                let document = window.document().unwrap();
+                let a = document
+                    .create_element("a")
+                    .unwrap()
+                    .dyn_into::<web_sys::HtmlAnchorElement>()
+                    .unwrap();
+                a.set_href(&image_string);
+                a.set_download("canvas.png");
+                // // hide the link
+                // a.set_property("display", "none").unwrap();
+                // insert into DOM, trigger download, then remove
+                let body = document.body().unwrap();
+                body.append_child(&a).unwrap();
+                a.click();
+                body.remove_child(&a).unwrap();
+
+            }>
+                "Save as image"
+            </button>
         </div>
     }
 }
